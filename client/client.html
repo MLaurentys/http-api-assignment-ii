@@ -1,36 +1,103 @@
 <!DOCTYPE html>
 <html lang="en">
-<head>
-  <title>Our simple HTTP server</title>
-  <link rel="stylesheet" type="text/css" href="/style.css">
-  
-  <script>
+  <head>
+    <title>Our simple HTTP server</title>
+    <link rel="stylesheet" type="text/css" href="/style.css" />
+  </head>
+  <body>
+    <section id="top">
+      <h3>POST Status Code Tests</h3>
+      <form id="nameForm" action="/addUser" method="post">
+        <label for="name">Name: </label>
+        <input id="nameField" type="text" name="name" />
+        <label for="age">Age: </label>
+        <input
+          id="ageField"
+          type="number"
+          name="age"
+          min="0"
+          max="100"
+          step="1"
+        />
+        <input id="addUser" type="button" value="Add User" />
+      </form>
+      <form id="userForm" action="/getUsers" method="get">
+        <select id="urlField">
+          <option value="/getUsers">/getUsers</option>
+          <option value="/notReal">/notReal</option>
+        </select>
+        <select id="methodSelect">
+          <option value="GET">GET</option>
+          <option value="HEAD">HEAD</option>
+        </select>
+        <input id="getUser" type="button" value="Get User" />
+      </form>
+    </section>
+    <section id="content"></section>
 
-  </script>
-</head>
-<body>
-  <section id="top">
-    <h3>POST Status Code Tests</h3>
-    <form id="nameForm" action="/addUser" method="post">
-      <label for="name">Name: </label>
-      <input id="nameField" type="text" name="name" />
-      <label for="age">Age: </label>
-      <input id="ageField" type="number" name="age" min="0" max="100" step="1"/>
-      <input type="submit" value="Add User" />
-    </form>
-    <form id="userForm" action="/getUsers" method="get">
-      <select id='urlField'>
-        <option value='/getUsers'>/getUsers</option>
-        <option value='/notReal'>/notReal</option>
-      </select>
-      <select id="methodSelect">
-        <option value="get">GET</option>
-        <option value="head">HEAD</option>
-      </select>
-      <input type="submit" value="Get User" />
-    </form>
-  </section>
-  <section id="content">
-  </section>
-</body>
+    <script>
+      const nameTextArea = document.querySelector("#nameField");
+      const ageTextArea = document.querySelector("#ageField");
+      const contentSection = document.querySelector("#content");
+      const methodSelector = document.querySelector("#methodSelect");
+      const urlSelector = document.querySelector("#urlField");
+
+      async function handleGetUsersGETSuccess(response) {
+        const text = await response.text();
+        const users = JSON.parse(text);
+        let content = "<ul>";
+        if (users.length === 0) content += "{}";
+        else
+          Object.entries(users).forEach(
+            (user) => (content += `<li>Name: ${user[0]}, Age: ${user[1]}</li>`)
+          );
+        contentSection.innerHTML =
+          "<em>Success</em><br/><br/>" + content + "</ul>";
+      }
+
+      document.querySelector("#addUser").onclick = async (e) => {
+        e.preventDefault();
+        const response = await fetch("/addUser", {
+          headers: { Accept: "application/json" },
+          body: `name=${nameTextArea.value}&age=${ageTextArea.value}`,
+          method: "POST",
+        });
+        if (response.status === 201) {
+          const text = await response.text();
+          contentSection.innerHTML = `<em>Created</em><br/><br/>Message: ${
+            JSON.parse(text).message
+          }`;
+        } else if (response.status === 204)
+          contentSection.innerHTML = "<em>Updated (No content)</em>";
+        else if (response.status === 400) {
+          const text = await response.text();
+          contentSection.innerHTML = `<em>Bad Request</em><br/><br/>Message: ${
+            JSON.parse(text).message
+          }`;
+        }
+      };
+
+      document.querySelector("#getUser").onclick = async (e) => {
+        e.preventDefault();
+        const response = await fetch(urlSelector.value, {
+          headers: { Accept: "application.json" },
+          method: methodSelector.value,
+        });
+        if (methodSelector.value === "GET") {
+          if (response.status === 200) handleGetUsersGETSuccess(response);
+          else {
+            const text = await response.text();
+            contentSection.innerHTML = `<em>Not Found</em><br/><br/>Message: ${
+              JSON.parse(text).message
+            }`;
+          }
+        } else if (methodSelector.value === "HEAD") {
+          if (response.status === 200)
+            contentSection.innerHTML = `<em>Success</em>`;
+          else if (response.status === 404)
+            contentSection.innerHTML = `<em>Not Found</em>`;
+        }
+      };
+    </script>
+  </body>
 </html>
